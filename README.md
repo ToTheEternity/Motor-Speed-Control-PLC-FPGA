@@ -102,11 +102,12 @@ munjigaaerdene@gmail.com
 
 
 
-# Closed-Loop DC Motor Speed & Direction Control System (PLC + FPGA)
+# DC Motor-ийн хурд ба эргэлтийн чиглэлийн удирдлагын систем (PLC + FPGA)
 
-Автомат удирдлагын системийн бие даалтын төсөл (МУИС — Мэдээллийн технологи, Электроникийн сургууль).
+**Автомат удирдлагын системийн бие даалтын төсөл**  
+МУИС — Мэдээллийн технологи, электроникийн сургууль
 
-Энэхүү систем нь **Schneider Modicon TM218LDA60RDN** PLC болон **Sipeed Tang Nano 4K** FPGA хавтанг **RS-485 (Modbus RTU)** протоколоор холбож, тогтмол гүйдлийн хөдөлгүүрийн (DC Motor) эргэлтийн хурд болон чиглэлийг битүү гогцооны (Closed-Loop PID) зарчмаар тогтворжуулан удирдах зориулалттай.
+Энэхүү төсөл нь **Schneider Modicon TM218LDA60RDN PLC** болон **Sipeed Tang Nano 4K FPGA** хавтанг **RS-485 (Modbus RTU)** протокол ашиглан холбож, DC Motor-ийн эргэлтийн хурд болон чиглэлийг **Feedback Control (PID)** зарчмаар удирдах систем боловсруулахад чиглэнэ.
 
 ---
 
@@ -122,40 +123,63 @@ munjigaaerdene@gmail.com
                          [2x Opto-Sensors + PC817] ◄── [10-Slot Encoder Disk] ◄── [Motor Driver (2N2222 + IRF540 + 2x Relays)]
 ```
 
-1. **Удирдлагын өгөгдөл (PLC):** Сургалтын хавтангийн 7 ширхэг унтраалгаар (`%IX0.2`–`%IX0.8`) зорилтот хурд буюу Setpoint (`0..127 RPM`), 1 унтраалгаар (`%IX0.9`) эргэлтийн чиглэлийг өгнө.
-2. **Хурд хэмжилт ба PID (PLC):** Моторын голд суурилуулсан нүхтэй диск болон 2 оптик мэдрэгчээс ирэх импульсийг `PC817` optocoupler-аар тусгаарлан PLC-ийн `I0`, `I1` өндөр хурдны тоолуурт (HSC) өгнө. PLC нь `500 ms` тутамд бодит RPM-ийг тооцоолж, PID алгоритмаар PWM командыг (`0..255`) боловсруулан `%MW0` регистрт хадгална.
-3. **Харилцаа холбоо ба PWM (FPGA):** `Tang Nano 4K` FPGA нь Modbus RTU Master горимоор `MAX13487E` RS-485 модулиар дамжуулан PLC-ийн `%MW0` регистрийн утгыг уншиж, `21 kHz` давтамжтай PWM дохио үүсгэнэ.
-4. **Хүчний драйвер:** FPGA-ийн `3.3V` PWM дохиог `2N2222` транзистороор инверс хийж `12V` болгон өсгөж, `IRF540` MOSFET-ээр моторын хурдыг, 2 ширхэг `24V` релегээр эргэлтийн чиглэлийг удирдана.
+### 1. Setpoint тохируулах (PLC)
+
+Сургалтын хавтан дээрх 7 ширхэг унтраалга (`%IX0.2`–`%IX0.8`)-аар моторын зорилтот хурд буюу **Setpoint (0–127 RPM)**-ийг тохируулна. Харин нэг унтраалга (`%IX0.9`)-аар моторын эргэлтийн чиглэлийг сонгоно.
+
+### 2. Хурд хэмжих ба PID Control (PLC)
+
+Моторын голд суурилуулсан **10-Slot Encoder Disk**-ийн эргэлтийг хоёр Optical Sensor (`XD-51`) ашиглан мэдэрнэ. Мэдрэгчүүдээс ирэх импульсийг `PC817` Optocoupler-оор дамжуулан PLC-ийн `I0`, `I1` өндөр хурдны тоолуур (HSC)-т оруулна.
+
+PLC нь 500 ms тутамд импульсийн тоог ашиглан моторын бодит эргэлтийн хурд (RPM)-ийг тооцоолно. Дараа нь PID алгоритмаар Setpoint болон бодит RPM-ийн зөрүүг боловсруулж, PWM command-ийн утгыг (0–255) тооцоолон `%MW0` регистрт хадгална.
+
+### 3. Харилцаа холбоо ба PWM Generation (FPGA)
+
+`Tang Nano 4K` FPGA нь **Modbus RTU Master** горимд ажиллаж, `MAX13487E` RS-485 модулиар дамжуулан PLC-ийн `%MW0` регистрээс PWM command-ийн утгыг уншина.
+
+FPGA нь хүлээн авсан утгад үндэслэн 21 kHz давтамжтай PWM дохио үүсгэнэ.
+
+### 4. Motor Driver ба чиглэл удирдлага
+
+FPGA-ийн 3.3 V PWM дохиог `2N2222` транзисторын хэлхээгээр инверс хийж, 12 V түвшний удирдлагын дохио болгон хувиргана. `IRF540` N-Channel MOSFET нь моторын хурдыг PWM дохиогоор удирдах бол хоёр ширхэг 24 V реле нь моторын эргэлтийн чиглэлийг өөрчилнө.
 
 ---
 
-## 🛠️ Ашигласан техник ба Програм хангамж
+## 🛠️ Ашигласан техник хангамж ба программ хангамж
 
 ### Техник хангамж (Hardware)
-* **PLC:** Schneider Electric Modicon `TM218LDA60RDN`
-* **FPGA:** Sipeed `Tang Nano 4K` (Gowin GW1NSR-LV4C, 27 MHz Clock)
-* **RS-485 Transceiver:** `MAX13487E` (Auto-direction control, 9600 bps, 8-N-1)
-* **Хөдөлгүүр:** `JGB37-520` DC Gear Motor (6V, 200 RPM)
-* **Драйвер ба Хамгаалалт:** `IRF540` N-Channel MOSFET, `2N2222` BJT, 2x `24V` Relay, `1N5408` Flyback Diodes
-* **Мэдрэгч:** 2x Optical Slot Sensor (`XD-51`) + `PC817` Optocoupler
 
-### Програм хангамж (Software)
-* **SoMachine:** PLC програмчлал (Structured Text), HSC болон Modbus Slave тохиргоо
-* **Gowin EDA:** FPGA логик дизайн (VHDL) болон Pinout тохиргоо
-* **Proteus:** Электрон хэлхээний симуляци
+| Төхөөрөмж | Загвар / Төрөл | Үүрэг |
+|---|---|---|
+| PLC | Schneider Electric Modicon `TM218LDA60RDN` | Setpoint унших, RPM тооцоолох, PID Control |
+| FPGA | Sipeed `Tang Nano 4K` (Gowin GW1NSR-LV4C, 27 MHz Clock) | Modbus RTU Master, PWM Generation |
+| RS-485 Transceiver | `MAX13487E` | RS-485 харилцаа холбоо, Auto-direction Control |
+| DC Motor | `JGB37-520` (6 V, 200 RPM) | Удирдагдах хөдөлгүүр |
+| MOSFET | `IRF540` N-Channel | Motor Speed Control |
+| BJT | `2N2222` | PWM дохионы инверс болон түвшин хувиргалт |
+| Relay | 2 ширхэг, 24 V | Моторын эргэлтийн чиглэл өөрчлөх |
+| Flyback Diode | `1N5408` | Хэлхээг индукцийн хүчдэлээс хамгаалах |
+| Optical Sensor | 2 ширхэг `XD-51` | Encoder Disk-ийн импульс мэдрэх |
+| Optocoupler | `PC817` | Мэдрэгчийн дохиог PLC-ээс тусгаарлах |
+
+### Программ хангамж (Software)
+
+- **SoMachine:** PLC-ийн Structured Text программчлал, HSC болон Modbus Slave тохиргоо.
+- **Gowin EDA:** FPGA-ийн VHDL логик дизайн болон Pinout тохиргоо.
+- **Proteus:** Электрон хэлхээний симуляци.
 
 ---
 
-## 📌 Tang Nano 4K Pinout (`.cst`)
+## 📌 Tang Nano 4K Pinout (`pinout.cst`)
 
-| Дохионы нэр | FPGA Pin | I/O Төрөл | Үүрэг |
-| :--- | :---: | :---: | :--- |
-| `clk_27m` | **45** | LVCMOS33 | Үндсэн 27 MHz тактын давтамж |
-| `reset_n` | **15** | LVCMOS18 | Системийг дахин эхлүүлэх (Active Low) |
+| Дохионы нэр | FPGA Pin | I/O Standard | Үүрэг |
+|---|:---:|---|---|
+| `clk_27m` | **45** | LVCMOS33 | Үндсэн 27 MHz Clock |
+| `reset_n` | **15** | LVCMOS18 | Системийн Reset (Active Low) |
 | `rs485_rxd` | **40** | LVCMOS33 | MAX13487E модулиас өгөгдөл хүлээн авах (RX) |
-| `rs485_txd` | **44** | LVCMOS33 | MAX13487E модуль руу хүсэлт илгээх (TX) |
+| `rs485_txd` | **44** | LVCMOS33 | MAX13487E модуль руу өгөгдөл дамжуулах (TX) |
 | `pwm_out` | **41** | LVCMOS33 | 21 kHz давтамжтай PWM гаралт |
-| `comm_error`| **43** | LVCMOS33 | Modbus холболтын алдаа заагч LED |
+| `comm_error` | **43** | LVCMOS33 | Modbus харилцааны алдааг заах LED |
 
 ---
 
@@ -168,20 +192,20 @@ munjigaaerdene@gmail.com
 │   ├── modbus_crc.vhd      # CRC-16 алдаа шалгах модуль
 │   ├── uart_rx.vhd         # UART хүлээн авагч (9600 baud)
 │   ├── uart_tx.vhd         # UART дамжуулагч (9600 baud)
-│   ├── pwm_generator.vhd   # 21 kHz давтамжтай 8-бит PWM үүсгэгч
-│   └── pinout.cst          # Tang Nano 4K хөлний оноолт
+│   ├── pwm_generator.vhd   # 21 kHz давтамжтай 8-bit PWM үүсгэгч
+│   └── pinout.cst          # Tang Nano 4K Pin Assignment
 │
 ├── PLC/
-│   ├── GVL_MODBUS.st       # Modbus санах ойн хаягууд (%MW0, %MW1, %MW2)
-│   ├── MODBUS.st           # Унтраалгуудаас Setpoint болон чиглэл унших
-│   ├── PRG_HSC.st          # Өндөр хурдны тоолуур (I0, I1)
-│   ├── PRG_RPM.st          # 500 ms тутамд эргэлтийн хурд (RPM) тооцоолох
-│   └── PRG_PID.st          # Хурд тогтворжуулах PID удирдлага
+│   ├── GVL_MODBUS.st       # Modbus регистрийн хаягууд (%MW0, %MW1, %MW2)
+│   ├── MODBUS.st           # Унтраалгуудаас Setpoint болон Direction унших
+│   ├── PRG_HSC.st          # HSC тоолуурын удирдлага (I0, I1)
+│   ├── PRG_RPM.st          # 500 ms тутамд RPM тооцоолох
+│   └── PRG_PID.st          # Хурд тогтворжуулах PID Control
 │
 └── README.md               # Төслийн танилцуулга
 ```
 
 ---
 
-e-mail:
+**Холбоо барих:**  
 munjigaaerdene@gmail.com
